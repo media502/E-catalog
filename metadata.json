@@ -1,0 +1,6 @@
+{
+  "name": "WOLF CAR - كتالوج أكسسوارات السيارات",
+  "description": "الكتالوج الرسمي لوولف كار لإدارة وعرض أكسسوارات السيارات وتوليد الباركود وقاعدة البيانات السحابية",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

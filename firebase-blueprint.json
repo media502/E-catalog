@@ -1,0 +1,88 @@
+{
+  "entities": {
+    "categories": {
+      "title": "Car Category",
+      "description": "Vehicle categories for organizing car accessories",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "carModel": { "type": "string" },
+        "headerTitle": { "type": "string" },
+        "mainCarImageUrl": { "type": "string" },
+        "description": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["id", "name", "carModel"]
+    },
+    "products": {
+      "title": "Product",
+      "description": "Car accessory product item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "name": { "type": "string" },
+        "barcode": { "type": "string" },
+        "price": { "type": "number" },
+        "oldPrice": { "type": "number" },
+        "currency": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "categoryId", "name", "barcode", "price"]
+    },
+    "settings": {
+      "title": "Catalog Settings",
+      "description": "Store preferences and catalog branding configuration",
+      "type": "object",
+      "properties": {
+        "storeName": { "type": "string" },
+        "storeLogoUrl": { "type": "string" },
+        "contactNumber": { "type": "string" },
+        "currency": { "type": "string" },
+        "cardStyle": { "type": "string" }
+      }
+    },
+    "activity_logs": {
+      "title": "Activity Log",
+      "description": "Real-time audit log of price changes, product edits, and additions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "userName": { "type": "string" },
+        "userRole": { "type": "string" },
+        "actionType": { "type": "string" },
+        "productId": { "type": "string" },
+        "productName": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "categoryName": { "type": "string" },
+        "details": { "type": "string" },
+        "oldValue": { "type": "string" },
+        "newValue": { "type": "string" }
+      },
+      "required": ["id", "timestamp", "userName", "userRole", "actionType", "details"]
+    }
+  },
+  "firestore": {
+    "/categories/{categoryId}": {
+      "entity": "categories",
+      "description": "Car categories collection"
+    },
+    "/products/{productId}": {
+      "entity": "products",
+      "description": "Car accessories product collection"
+    },
+    "/settings/{settingId}": {
+      "entity": "settings",
+      "description": "Application settings"
+    },
+    "/activity_logs/{logId}": {
+      "entity": "activity_logs",
+      "description": "Activity audit logs collection"
+    }
+  }
+}
