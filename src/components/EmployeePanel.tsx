@@ -36,6 +36,7 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowRight,
+  ArrowUpDown,
   ZoomIn,
   ZoomOut,
   RotateCcw,
@@ -62,6 +63,8 @@ interface EmployeePanelProps {
   onDeleteMultipleProducts?: (productIds: string[]) => Promise<void> | void;
   onBulkImportProducts?: (newProducts: Product[], newCategories?: CarCategory[]) => Promise<void> | void;
   onOpenPdfExtractor?: () => void;
+  onOpenCategoryOrderModal?: () => void;
+  onSaveCategoryOrder?: (reordered: CarCategory[]) => Promise<void> | void;
   onClose: () => void;
 }
 
@@ -77,6 +80,8 @@ export const EmployeePanel: React.FC<EmployeePanelProps> = ({
   onDeleteMultipleProducts,
   onBulkImportProducts,
   onOpenPdfExtractor,
+  onOpenCategoryOrderModal,
+  onSaveCategoryOrder,
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<'product' | 'category' | 'bulk_delete' | 'import_export' | 'supabase_sync'>('product');
@@ -1331,54 +1336,116 @@ export const EmployeePanel: React.FC<EmployeePanelProps> = ({
                 </div>
               )}
 
-              {/* Existing Categories List with 1-Click Delete Full Category */}
+              {/* Existing Categories List with Reorder Controls and Delete */}
               <div className="space-y-2.5">
-                <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <Layers className="w-4 h-4 text-orange-600" />
-                  <span>الأقسام الحالية وخيارات الحذف الكامل:</span>
-                </h4>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Layers className="w-4 h-4 text-orange-600" />
+                    <span>الأقسام الحالية وترتيب العرض في الهيدر:</span>
+                  </h4>
+                  {onOpenCategoryOrderModal && (
+                    <button
+                      type="button"
+                      onClick={onOpenCategoryOrderModal}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-200 rounded-lg text-xs font-bold transition-colors shadow-2xs self-start sm:self-auto cursor-pointer"
+                    >
+                      <ArrowUpDown className="w-3.5 h-3.5 text-orange-600" />
+                      <span>ترتيب أقسام الهيدر (تحديد الأول والثاني...)</span>
+                    </button>
+                  )}
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {categories.map((cat) => {
+                  {categories.map((cat, catIdx) => {
                     const catProductsCount = products.filter((p) => p.categoryId === cat.id).length;
+                    const isFirst = catIdx === 0;
+                    const isLast = catIdx === categories.length - 1;
+
                     return (
                       <div
                         key={cat.id}
-                        className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3"
+                        className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 transition-all ${
+                          isFirst ? 'bg-orange-50/40 border-orange-200' : 'bg-slate-50 border-slate-200'
+                        }`}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {/* Order position number badge */}
+                          <span className={`w-6 h-6 rounded-full text-xs font-black flex items-center justify-center shrink-0 ${
+                            isFirst ? 'bg-orange-600 text-white' : 'bg-slate-800 text-white'
+                          }`} title={`الترتيب في الهيدر: ${catIdx + 1}`}>
+                            {catIdx + 1}
+                          </span>
+
                           {cat.mainCarImageUrl ? (
                             <img
                               src={cat.mainCarImageUrl}
                               alt={cat.name}
-                              className="w-12 h-12 object-cover rounded-lg border border-slate-200"
+                              className="w-11 h-11 object-cover rounded-lg border border-slate-200 shrink-0"
                               onError={(e) => {
                                 (e.target as HTMLElement).style.display = 'none';
                               }}
                             />
                           ) : (
-                            <div className="w-12 h-12 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center text-[10px] text-slate-400 font-bold shrink-0">
+                            <div className="w-11 h-11 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center text-[10px] text-slate-400 font-bold shrink-0">
                               بدون
                             </div>
                           )}
-                          <div>
-                            <h5 className="font-bold text-xs text-slate-900">{cat.name}</h5>
-                            <p className="text-[11px] text-slate-500">{cat.carModel}</p>
+                          <div className="min-w-0">
+                            <h5 className="font-bold text-xs text-slate-900 truncate">{cat.name}</h5>
+                            <p className="text-[11px] text-slate-500 truncate">{cat.carModel}</p>
                             <span className="inline-block mt-0.5 text-[10px] bg-slate-200 text-slate-700 px-2 py-0.2 rounded font-bold">
                               {catProductsCount} منتج
                             </span>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1 shrink-0">
+                          {/* Quick Up/Down arrows */}
+                          {onSaveCategoryOrder && (
+                            <div className="flex items-center gap-0.5 bg-white border border-slate-200 rounded-lg p-0.5">
+                              <button
+                                type="button"
+                                disabled={isFirst}
+                                onClick={() => {
+                                  if (isFirst) return;
+                                  const copy = [...categories];
+                                  const temp = copy[catIdx];
+                                  copy[catIdx] = copy[catIdx - 1];
+                                  copy[catIdx - 1] = temp;
+                                  onSaveCategoryOrder(copy);
+                                }}
+                                className="p-1 hover:bg-orange-50 hover:text-orange-600 text-slate-600 rounded disabled:opacity-20 disabled:pointer-events-none transition-colors"
+                                title="تحريك لأعلى"
+                              >
+                                <ArrowUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isLast}
+                                onClick={() => {
+                                  if (isLast) return;
+                                  const copy = [...categories];
+                                  const temp = copy[catIdx];
+                                  copy[catIdx] = copy[catIdx + 1];
+                                  copy[catIdx + 1] = temp;
+                                  onSaveCategoryOrder(copy);
+                                }}
+                                className="p-1 hover:bg-orange-50 hover:text-orange-600 text-slate-600 rounded disabled:opacity-20 disabled:pointer-events-none transition-colors"
+                                title="تحريك لأسفل"
+                              >
+                                <ArrowDown className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+
                           <button
                             type="button"
                             onClick={() => handleStartEditCategory(cat)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[11px] font-bold border border-blue-200 transition-colors"
+                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[11px] font-bold border border-blue-200 transition-colors"
                             title="تعديل اسم وموديل وصورة هذا القسم"
                           >
                             <Pencil className="w-3.5 h-3.5" />
-                            <span>تعديل</span>
+                            <span className="hidden sm:inline">تعديل</span>
                           </button>
 
                           <button
@@ -1390,11 +1457,11 @@ export const EmployeePanel: React.FC<EmployeePanelProps> = ({
                                 count: catProductsCount
                               });
                             }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 text-[11px] font-bold border border-rose-200 transition-colors"
-                            title="حذف هذا القسم وكافة منتجاته من Firestore"
+                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 text-[11px] font-bold border border-rose-200 transition-colors"
+                            title="حذف هذا القسم وكافة منتجاته"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                            <span>حذف</span>
+                            <span className="hidden sm:inline">حذف</span>
                           </button>
                         </div>
                       </div>

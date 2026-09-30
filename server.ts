@@ -6,7 +6,7 @@ import { GoogleGenAI } from '@google/genai';
 
 async function startServer() {
   const app = express();
-  const PORT = Number(process.env.PORT) || 3005;
+  const PORT = Number(process.env.PORT) || 3000;
 
 
   // Increase payload limit for base64 catalog page images
@@ -264,16 +264,6 @@ async function startServer() {
     }
   });
 
-  // Migration API endpoint available on-demand only (never runs on startup automatically to prevent rate limits)
-  app.post('/api/trigger-migration', async (req, res) => {
-    try {
-      const result = await executeFirebaseToSupabaseMigration();
-      res.json(result);
-    } catch (e: any) {
-      res.status(500).json({ success: false, error: e.message });
-    }
-  });
-
   // AI Vision Vision Catalog Product Detector with automatic retry and model fallback
   app.post('/api/ai-detect-products', async (req, res) => {
     try {
@@ -311,7 +301,7 @@ Return ONLY valid JSON matching this schema:
 }`;
 
       // Execute with retries and model fallback
-      const modelsToTry = ['gemini-3.7-flash', 'gemini-flash-latest'];
+      const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash'];
       let responseText = '{}';
       let lastError: any = null;
 

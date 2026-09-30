@@ -343,6 +343,10 @@ async function fetchFullCatalogOnce(): Promise<void> {
       }
 
       if (savedCats && savedCats.length > 0) {
+        if (!savedCats.some(c => c.id === 'cat-protection-tint')) {
+          const defaultProtectionCat = INITIAL_CATEGORIES.find(c => c.id === 'cat-protection-tint');
+          if (defaultProtectionCat) savedCats.push(defaultProtectionCat);
+        }
         memoryCategories = savedCats;
         notifyCategories(savedCats);
       }
@@ -370,14 +374,85 @@ async function fetchFullCatalogOnce(): Promise<void> {
     // 2. Fetch live Categories directly from Supabase
     let fetchedCategories: CarCategory[] = [];
     try {
-      const { data: sbCats, error: catErr } = await supabase
+      let sbCats: any[] | null = null;
+      const queryWithOrder = await supabase
         .from('categories')
         .select('*')
         .order('order', { ascending: true });
 
-      if (!catErr && sbCats && sbCats.length > 0) {
+      if (!queryWithOrder.error && queryWithOrder.data && queryWithOrder.data.length > 0) {
+        sbCats = queryWithOrder.data;
+      } else {
+        const fallbackQuery = await supabase.from('categories').select('*');
+        if (!fallbackQuery.error && fallbackQuery.data) {
+          sbCats = fallbackQuery.data;
+        }
+      }
+
+      // Check saved custom category order from settings or local storage
+      let savedCustomOrder: string[] = [];
+      try {
+        const { data: orderRow } = await supabase
+          .from('settings')
+          .select('id, data')
+          .eq('id', 'category_order')
+          .maybeSingle();
+
+        if (orderRow?.data && Array.isArray(orderRow.data)) {
+          savedCustomOrder = orderRow.data;
+        } else if (orderRow?.data?.order && Array.isArray(orderRow.data.order)) {
+          savedCustomOrder = orderRow.data.order;
+        }
+      } catch (_) {}
+
+      if (!savedCustomOrder.length) {
+        try {
+          const localOrder = localStorage.getItem('wolfcar_categories_order');
+          if (localOrder) {
+            savedCustomOrder = JSON.parse(localOrder);
+          }
+        } catch (_) {}
+      }
+
+      if (sbCats && sbCats.length > 0) {
         fetchedCategories = sbCats.map(parseCategoryFromSupabase);
+        if (!fetchedCategories.some(c => c.id === 'cat-protection-tint')) {
+          const defaultProtectionCat = INITIAL_CATEGORIES.find(c => c.id === 'cat-protection-tint');
+          if (defaultProtectionCat) fetchedCategories.push(defaultProtectionCat);
+        }
+
+        if (savedCustomOrder.length > 0) {
+          fetchedCategories.sort((a, b) => {
+            const idxA = savedCustomOrder.indexOf(a.id);
+            const idxB = savedCustomOrder.indexOf(b.id);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+            return (a.order ?? 0) - (b.order ?? 0);
+          });
+        } else {
+          fetchedCategories.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        }
+
         updateLocalCache(undefined, fetchedCategories);
+      }
+
+      // Fetch protection catalog from Supabase settings
+      try {
+        const { data: settingRow } = await supabase
+          .from('settings')
+          .select('id, data')
+          .eq('id', 'protection_tint_catalog')
+          .maybeSingle();
+
+        if (settingRow && settingRow.data) {
+          notifyProtectionCatalog(settingRow.data);
+          try {
+            localStorage.setItem('wolfcar_protection_tint_data', JSON.stringify(settingRow.data));
+          } catch (_) {}
+        }
+      } catch (settingErr) {
+        console.warn('Protection catalog settings sync note:', settingErr);
       }
     } catch (catErr) {
       console.warn('Categories sync note:', catErr);
@@ -581,6 +656,45 @@ export const saveCategoryToDb = async (category: CarCategory): Promise<boolean> 
     return true;
   } catch (err) {
     console.warn('Supabase save category error:', err);
+    return true;
+  }
+};
+
+// 6.b Save Categories Order
+export const saveCategoriesOrderToDb = async (orderedCategories: CarCategory[]): Promise<boolean> => {
+  const updatedCategories = orderedCategories.map((cat, idx) => ({
+    ...cat,
+    order: idx
+  }));
+
+  updateLocalCache(undefined, updatedCategories);
+  syncToBackend(undefined, updatedCategories);
+
+  const orderedIds = orderedCategories.map(c => c.id);
+
+  // 1. Cache ordered IDs to localStorage
+  try {
+    localStorage.setItem('wolfcar_categories_order', JSON.stringify(orderedIds));
+  } catch (_) {}
+
+  // 2. Persist to Supabase settings table
+  try {
+    await supabase.from('settings').upsert({
+      id: 'category_order',
+      data: orderedIds,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'id' });
+  } catch (err) {
+    console.warn('Supabase save category_order settings warning:', err);
+  }
+
+  // 3. Upsert formatted categories with their order attribute
+  try {
+    const formatted = updatedCategories.map(formatCategoryForSupabase);
+    await supabase.from('categories').upsert(formatted, { onConflict: 'id' });
+    return true;
+  } catch (err) {
+    console.warn('Supabase save categories order error:', err);
     return true;
   }
 };
@@ -849,7 +963,80 @@ export const emptyTrashInDb = async (): Promise<boolean> => {
   }
 };
 
-// 12. Migration & Seeding tool
+// 12. Protection & Tinting Catalog Persistence (Supabase + LocalCache)
+let memoryProtectionCatalog: any = null;
+const protectionCatalogListeners: ((data: any) => void)[] = [];
+
+export const notifyProtectionCatalog = (data: any) => {
+  if (!data) return;
+  memoryProtectionCatalog = data;
+  protectionCatalogListeners.forEach(fn => {
+    try { fn(data); } catch (_) {}
+  });
+};
+
+export const subscribeToProtectionCatalog = (callback: (data: any) => void) => {
+  protectionCatalogListeners.push(callback);
+  if (memoryProtectionCatalog) {
+    callback(memoryProtectionCatalog);
+  } else {
+    try {
+      const saved = localStorage.getItem('wolfcar_protection_tint_data');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        memoryProtectionCatalog = parsed;
+        callback(parsed);
+      }
+    } catch (_) {}
+  }
+  return () => {
+    const idx = protectionCatalogListeners.indexOf(callback);
+    if (idx >= 0) protectionCatalogListeners.splice(idx, 1);
+  };
+};
+
+export const getProtectionCatalogData = (): any | null => {
+  if (memoryProtectionCatalog) return memoryProtectionCatalog;
+  try {
+    const saved = localStorage.getItem('wolfcar_protection_tint_data');
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+};
+
+export const saveProtectionCatalogToDb = async (data: any): Promise<boolean> => {
+  if (!data) return false;
+  memoryProtectionCatalog = data;
+  try {
+    localStorage.setItem('wolfcar_protection_tint_data', JSON.stringify(data));
+  } catch (_) {}
+  notifyProtectionCatalog(data);
+
+  // 1. Sync to Supabase settings table
+  try {
+    await supabase.from('settings').upsert({
+      id: 'protection_tint_catalog',
+      data: data,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'id' });
+  } catch (err) {
+    console.warn('Supabase settings save notice:', err);
+  }
+
+  // 2. Also update Supabase categories row for cat-protection-tint
+  try {
+    await supabase.from('categories').update({
+      data: { protectionCatalog: data }
+    }).eq('id', 'cat-protection-tint');
+  } catch (err) {
+    console.warn('Supabase category update notice:', err);
+  }
+
+  return true;
+};
+
+// 13. Migration & Seeding tool
 export const seedInitialDatabase = async () => {
   // Trigger single catalog load
   await fetchFullCatalogOnce();

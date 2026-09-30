@@ -10,6 +10,7 @@ interface CategoryHeaderProps {
   onAddNewProduct?: () => void;
   isEmployeeUnlocked?: boolean;
   showEmployeeActions?: boolean;
+  extraActions?: React.ReactNode;
 }
 
 export const CategoryHeader: React.FC<CategoryHeaderProps> = ({
@@ -20,6 +21,7 @@ export const CategoryHeader: React.FC<CategoryHeaderProps> = ({
   onAddNewProduct,
   isEmployeeUnlocked = false,
   showEmployeeActions = false,
+  extraActions,
 }) => {
   const canEdit = isEmployeeUnlocked || showEmployeeActions;
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
@@ -65,10 +67,14 @@ export const CategoryHeader: React.FC<CategoryHeaderProps> = ({
 
           <div className="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-3 text-xs font-semibold text-slate-300">
             <span className="bg-slate-800/90 px-3 py-1 rounded border border-slate-700 text-slate-200">
-              إجمالي المنتجات: <strong className="text-orange-400 font-bold">{productCount}</strong> قطعة
+              {category.id === 'cat-protection-tint' || category.name.includes('الحماية') ? (
+                <>إجمالي الخدمات المعتمدة: <strong className="text-orange-400 font-bold">{productCount || '37+'}</strong> خدمة وباقة</>
+              ) : (
+                <>إجمالي المنتجات: <strong className="text-orange-400 font-bold">{productCount}</strong> قطعة</>
+              )}
             </span>
 
-            {canEdit && onAddNewProduct && (
+            {canEdit && onAddNewProduct && category.id !== 'cat-protection-tint' && (
               <button
                 onClick={onAddNewProduct}
                 className="no-print inline-flex items-center gap-1.5 px-3 py-1 rounded bg-orange-600 hover:bg-orange-500 text-white font-bold transition-colors shadow-xs"
@@ -77,6 +83,8 @@ export const CategoryHeader: React.FC<CategoryHeaderProps> = ({
                 <span>إضافة منتج لهذا القسم</span>
               </button>
             )}
+
+            {extraActions}
 
             {canEdit && onEditCategory && (
               <button

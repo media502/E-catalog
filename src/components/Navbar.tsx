@@ -23,7 +23,8 @@ import {
   ChevronDown,
   Calculator,
   Laptop,
-  Trash2
+  Trash2,
+  ArrowUpDown
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -52,6 +53,7 @@ interface NavbarProps {
   userSession?: UserSession | null;
   onExportCategoryPdf?: (categoryId: string) => void;
   onExportAllPdf?: () => void;
+  onOpenCategoryOrderModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -80,6 +82,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   userSession,
   onExportCategoryPdf,
   onExportAllPdf,
+  onOpenCategoryOrderModal,
 }) => {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
@@ -367,6 +370,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-none">
             {categories.map((cat) => {
               const isSelected = activeCategoryId === cat.id;
+              const isProtection = cat.id === 'cat-protection-tint' || cat.name.includes('الحماية');
               return (
                 <button
                   key={cat.id}
@@ -374,14 +378,35 @@ export const Navbar: React.FC<NavbarProps> = ({
                   className={`px-4 py-1.5 rounded-full font-bold text-xs whitespace-nowrap transition-all flex items-center gap-1.5 border shadow-2xs ${
                     isSelected
                       ? 'bg-orange-600 text-white border-orange-600 shadow-sm ring-2 ring-orange-500/20'
+                      : isProtection
+                      ? 'bg-orange-50/70 text-orange-950 hover:bg-orange-100 hover:text-orange-900 border-orange-200'
                       : 'bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 border-slate-200'
                   }`}
                 >
-                  <Car className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-orange-600'}`} />
+                  {isProtection ? (
+                    <ShieldCheck className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-orange-600'}`} />
+                  ) : (
+                    <Car className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-orange-600'}`} />
+                  )}
                   <span>{cat.name}</span>
                 </button>
               );
             })}
+
+            {/* Quick Categories Reorder Button - ONLY for authenticated employees */}
+            {onOpenCategoryOrderModal && isEmployeeUnlocked && (
+              <button
+                onClick={onOpenCategoryOrderModal}
+                className="px-3.5 py-1.5 rounded-full font-black text-xs whitespace-nowrap transition-all flex items-center gap-1.5 border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-800 hover:text-orange-950 shadow-2xs shrink-0 cursor-pointer"
+                title="ترتيب أقسام السيارات في الهيدر الرئيسي وتحديد الأول والثاني والثالث"
+              >
+                <ArrowUpDown className="w-3.5 h-3.5 text-orange-600" />
+                <span>ترتيب الأقسام</span>
+                <span className="text-[10px] bg-orange-600 text-white rounded-full px-1.5 py-0.2 font-black leading-none">
+                  1-2-3
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Quick Search Input */}

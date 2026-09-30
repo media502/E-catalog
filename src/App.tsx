@@ -23,7 +23,8 @@ import {
   emptyTrashInDb,
   getLocalCachedCategories,
   getLocalCachedProducts,
-  subscribeToLoadingProgress
+  subscribeToLoadingProgress,
+  saveCategoriesOrderToDb
 } from './supabase';
 import { Navbar } from './components/Navbar';
 import { CategoryHeader } from './components/CategoryHeader';
@@ -40,7 +41,8 @@ import { DeleteConfirmPasswordModal } from './components/DeleteConfirmPasswordMo
 import { ImageViewerModal } from './components/ImageViewerModal';
 import { LoadingScreen } from './components/LoadingScreen';
 import { WolfLogo } from './components/WolfLogo';
-import { ProtectionTintCatalog } from './components/ProtectionTintCatalog';
+import { ProtectionTintCatalog, ProtectionControls } from './components/ProtectionTintCatalog';
+import { CategoryOrderModal } from './components/CategoryOrderModal';
 import { 
   PlusCircle, 
   SearchX, 
@@ -59,7 +61,12 @@ import {
   Trash2,
   ArrowUpDown,
   Clock,
-  GripVertical
+  GripVertical,
+  ShieldCheck,
+  Edit2,
+  RotateCcw,
+  Printer,
+  Check
 } from 'lucide-react';
 
 export default function App() {
@@ -79,6 +86,12 @@ export default function App() {
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(15);
   const [loadingStatusText, setLoadingStatusText] = useState('جاري الاتصال بقاعدة البيانات السحابية...');
+
+  // Protection Catalog registered controls (to power CategoryHeader actions seamlessly)
+  const [protectionControls, setProtectionControls] = useState<ProtectionControls | null>(null);
+
+  // Category Order Modal state
+  const [isCategoryOrderModalOpen, setIsCategoryOrderModalOpen] = useState(false);
 
   // User Session & Role
   const [userSession, setUserSession] = useState<UserSession | null>(null);
@@ -557,6 +570,18 @@ export default function App() {
     }
   };
 
+  // Save Reordered Categories
+  const handleSaveCategoryOrder = async (reordered: CarCategory[]) => {
+    setCategories(reordered);
+    await saveCategoriesOrderToDb(reordered);
+    await logActivityToDb({
+      actionType: 'category_edit',
+      userRole: userSession?.role || 'admin',
+      userName: userSession?.displayName || 'المسؤول',
+      details: `إعادة ترتيب وتثبيت أولويات أقسام السيارات في الهيدر الرئيسي بواسطة ${userSession?.displayName || 'المسؤول'}`
+    });
+  };
+
   // Prompt hard delete for an item in trash
   const handleRequestHardDelete = (deletedItem: DeletedProduct) => {
     setPendingDeleteAction({
@@ -963,6 +988,7 @@ export default function App() {
           setActiveCategoryId('all');
           setIsPrintView(true);
         }}
+        onOpenCategoryOrderModal={() => setIsCategoryOrderModalOpen(true)}
       />
 
       {/* Global Product Sorting & Custom Order Controller Bar */}
@@ -1030,32 +1056,60 @@ export default function App() {
               </button>
             </div>
 
-            {/* Custom Drag & Drop Order Toggle Button */}
-            <button
-              onClick={handleToggleCustomDrag}
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border text-[11px] font-bold transition-all shadow-2xs ${
-                sortMode === 'custom' && isDragEditing
-                  ? 'bg-orange-600 text-white border-orange-600 ring-2 ring-orange-500/40 shadow-sm animate-pulse'
-                  : sortMode === 'custom'
-                  ? 'bg-slate-900 text-white border-slate-900'
-                  : 'bg-white text-slate-700 border-slate-300 hover:border-orange-500 hover:text-orange-600'
-              }`}
-              title="اضغط لتفعيل/إيقاف وضع تعديل الترتيب بالسحب والإفلات"
-            >
-              <GripVertical className="w-3.5 h-3.5 text-orange-400" />
-              <span>
-                {sortMode === 'custom' && isDragEditing
-                  ? 'تعديل الترتيب (نشط ✔️ - اضغط للقفل)'
-                  : 'ترتيب مخصص (سحب وإفلات 🖐️)'}
-              </span>
-            </button>
+            {/* Custom Drag & Drop Order Toggle Button - ONLY for authenticated employees */}
+            {isEmployeeUnlocked && (
+              <button
+                onClick={handleToggleCustomDrag}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border text-[11px] font-bold transition-all shadow-2xs ${
+                  sortMode === 'custom' && isDragEditing
+                    ? 'bg-orange-600 text-white border-orange-600 ring-2 ring-orange-500/40 shadow-sm animate-pulse'
+                    : sortMode === 'custom'
+                    ? 'bg-slate-900 text-white border-slate-900'
+                    : 'bg-white text-slate-700 border-slate-300 hover:border-orange-500 hover:text-orange-600'
+                }`}
+                title="اضغط لتفعيل/إيقاف وضع تعديل الترتيب بالسحب والإفلات"
+              >
+                <GripVertical className="w-3.5 h-3.5 text-orange-400" />
+                <span>
+                  {sortMode === 'custom' && isDragEditing
+                    ? 'تعديل الترتيب (نشط ✔️ - اضغط للقفل)'
+                    : 'ترتيب مخصص (سحب وإفلات 🖐️)'}
+                </span>
+              </button>
+            )}
+
+            {/* Quick Switch to Protection & Tinting Catalog */}
+            {activeCategoryId !== 'cat-protection-tint' ? (
+              <button
+                onClick={() => {
+                  setActiveCategoryId('cat-protection-tint');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-orange-300 bg-orange-50 hover:bg-orange-100 text-orange-950 text-[11px] font-bold transition-all shadow-2xs"
+                title="الانتقال المباشر لكتالوج خدمات الحماية والعازل الحراري والبولش"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-orange-600" />
+                <span>خدمات الحماية والعازل الحراري 🔥</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  const firstCar = categories.find(c => c.id !== 'cat-protection-tint');
+                  if (firstCar) setActiveCategoryId(firstCar.id);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 text-[11px] font-bold transition-all shadow-2xs"
+                title="الرجوع لكتالوج أكسسوارات السيارات"
+              >
+                <span>← العودة لأكسسوارات السيارات</span>
+              </button>
+            )}
 
           </div>
 
         </div>
 
         {/* Info Banner when Custom Drag Editing is Active */}
-        {sortMode === 'custom' && isDragEditing && (
+        {sortMode === 'custom' && isDragEditing && isEmployeeUnlocked && (
           <div className="max-w-7xl mx-auto mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
             <span className="flex items-center gap-1.5 font-bold text-orange-700 bg-orange-50 px-2.5 py-1 rounded-md border border-orange-200/80 w-full sm:w-auto shadow-2xs">
               <Sparkles className="w-3.5 h-3.5 shrink-0 text-orange-500" />
@@ -1076,7 +1130,7 @@ export default function App() {
                   <section key={cat.id} className="space-y-4">
                     <CategoryHeader
                       category={cat}
-                      productCount={0}
+                      productCount={protectionControls?.servicesCount || 37}
                       isEmployeeUnlocked={isEmployeeUnlocked}
                       onEditCategory={() => {
                         setEditingCategory(cat);
@@ -1085,14 +1139,77 @@ export default function App() {
                       onDeleteCategory={(catId) => {
                         handleRequestDeleteCategory(catId, true);
                       }}
-                      onAddNewProduct={() => {
-                        setActiveCategoryId(cat.id);
-                        setEditingProduct(null);
-                        setIsEmployeePanelOpen(true);
-                      }}
+                      extraActions={
+                        <div className="no-print inline-flex items-center gap-2 flex-wrap">
+                          {/* Editing actions ONLY visible when employee is logged in */}
+                          {isEmployeeUnlocked && (
+                            <>
+                              <button
+                                onClick={protectionControls?.toggleEditing}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded font-bold text-xs transition-all shadow-xs cursor-pointer ${
+                                  protectionControls?.isEditing
+                                    ? 'bg-orange-600 text-white ring-2 ring-orange-400 animate-pulse'
+                                    : 'bg-slate-800 hover:bg-slate-700 text-orange-400 border border-slate-700'
+                                }`}
+                                title="تفعيل وضع التعديل لكافة الأسعار والمسميات والملاحظات"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                                <span>{protectionControls?.isEditing ? 'إنهاء التعديل' : 'تعديل الأسعار والخدمات'}</span>
+                              </button>
+
+                              {protectionControls?.isEditing && (
+                                <>
+                                  <button
+                                    onClick={protectionControls?.openAddModal}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                                    title="إضافة خدمة أو باقة جديدة"
+                                  >
+                                    <PlusCircle className="w-3.5 h-3.5" />
+                                    <span>إضافة بند جديد</span>
+                                  </button>
+
+                                  <button
+                                    onClick={protectionControls?.openReorderModal}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition-all shadow-xs cursor-pointer"
+                                    title="إعادة ترتيب التبويبات والأقسام"
+                                  >
+                                    <ArrowUpDown className="w-3.5 h-3.5 text-orange-400" />
+                                    <span>ترتيب التبويبات</span>
+                                  </button>
+
+                                  <button
+                                    onClick={protectionControls?.resetDefaults}
+                                    className="p-1 text-slate-400 hover:text-rose-400 bg-slate-800 rounded border border-slate-700 transition-colors cursor-pointer"
+                                    title="إعادة التعيين للأسعار الافتراضية"
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
+                            </>
+                          )}
+
+                          <button
+                            onClick={protectionControls?.printCatalog}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition-colors shadow-xs cursor-pointer"
+                            title="طباعة كتالوج وعروض أسعار الحماية"
+                          >
+                            <Printer className="w-3.5 h-3.5 text-orange-400" />
+                            <span className="hidden sm:inline">طباعة الكتالوج</span>
+                          </button>
+
+                          {protectionControls?.isDbSynced && isEmployeeUnlocked && (
+                            <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-800/80 text-emerald-400 text-[11px] font-semibold">
+                              <Check className="w-3 h-3" />
+                              <span>متصل بالسحابة</span>
+                            </span>
+                          )}
+                        </div>
+                      }
                     />
                     <ProtectionTintCatalog 
                       isEmployeeUnlocked={isEmployeeUnlocked} 
+                      onRegisterControls={setProtectionControls}
                       onLogActivity={(action, details) => {
                         logActivityToDb({
                           userName: userSession?.displayName || 'الموظف',
@@ -1312,6 +1429,8 @@ export default function App() {
           onDeleteMultipleProducts={handleDeleteMultipleProducts}
           onBulkImportProducts={handleBulkImportProducts}
           onOpenPdfExtractor={handleOpenPdfExtractorWithAuth}
+          onOpenCategoryOrderModal={() => setIsCategoryOrderModalOpen(true)}
+          onSaveCategoryOrder={handleSaveCategoryOrder}
           onClose={() => {
             setIsEmployeePanelOpen(false);
             setEditingProduct(null);
@@ -1437,6 +1556,17 @@ export default function App() {
           }}
         />
       )}
+
+      {/* MODAL 9: Category Order Modal (Reordering Main Header Categories) */}
+      <CategoryOrderModal
+        categories={categories}
+        isOpen={isCategoryOrderModalOpen}
+        onClose={() => setIsCategoryOrderModalOpen(false)}
+        onSaveOrder={handleSaveCategoryOrder}
+        onResetDefaultOrder={() => {
+          handleSaveCategoryOrder(INITIAL_CATEGORIES);
+        }}
+      />
 
     </div>
   );
