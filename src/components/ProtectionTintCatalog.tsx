@@ -96,8 +96,11 @@ export const INITIAL_PROTECTION_DATA = {
     description: 'ضمان حقيقي ضد الخدوش والعوامل الجوية مع تشطيب شفاف ذاتي المعالجة',
     partsTitle: '[قطع فردية]',
     partsSubTitle: 'الأسعار بالريال القطري (QAR)',
-    packagesTitle: '[باقات]',
+    packagesTitle: '[باقات الحماية المتكاملة]',
     packageTableHeader: 'اسم الباقة والتغطية',
+    subsectionsOrder: ['packages', 'parts'] as ('packages' | 'parts')[],
+    isPackagesEnabled: true,
+    isPartsEnabled: true,
     note: 'عند اختيار Full Protection يُضاف العازل الحراري CARONIC مجاناً ضمن نفس الطلب.',
     isNoteEnabled: true,
     individualParts: [
@@ -349,10 +352,15 @@ function normalizeCatalogData(data: any): typeof INITIAL_PROTECTION_DATA {
     normalized.polish.isNoteEnabled = normalized.polish.isNoteEnabled !== false;
   }
 
-  // Ensure PPF brands
+  // Ensure PPF brands & subsectionsOrder
   if (!normalized.ppf.brands || normalized.ppf.brands.length < 3) {
     normalized.ppf.brands = ['UltraGuard', 'Onyx', 'Xpel'];
   }
+  if (!normalized.ppf.subsectionsOrder || !Array.isArray(normalized.ppf.subsectionsOrder) || normalized.ppf.subsectionsOrder.length === 0) {
+    normalized.ppf.subsectionsOrder = ['packages', 'parts'];
+  }
+  normalized.ppf.isPackagesEnabled = normalized.ppf.isPackagesEnabled !== false;
+  normalized.ppf.isPartsEnabled = normalized.ppf.isPartsEnabled !== false;
   // Ensure Tint brands
   if (!normalized.tint.brands || normalized.tint.brands.length < 3) {
     normalized.tint.brands = ['CARONIC', 'SANTEK', 'Xpel'];
@@ -562,6 +570,66 @@ export const ProtectionTintCatalog: React.FC<ProtectionTintCatalogProps> = ({
     const updated = { ...catalogData };
     updated.ppf.isNoteEnabled = !current;
     saveCatalogData(updated, `${!current ? 'تفعيل' : 'إغلاق'} ملاحظة باقة Full Protection`);
+  };
+
+  // PPF Subsections Reorder and Toggle Handlers
+  const handleTogglePpfSubsectionOrder = () => {
+    const currentOrder = (catalogData.ppf.subsectionsOrder && catalogData.ppf.subsectionsOrder.length > 0)
+      ? catalogData.ppf.subsectionsOrder
+      : ['packages', 'parts'];
+    const newOrder: ('packages' | 'parts')[] =
+      currentOrder[0] === 'packages' ? ['parts', 'packages'] : ['packages', 'parts'];
+    const updated = {
+      ...catalogData,
+      ppf: {
+        ...catalogData.ppf,
+        subsectionsOrder: newOrder
+      }
+    };
+    saveCatalogData(
+      updated,
+      `تعديل ترتيب أقسام PPF: (${newOrder[0] === 'packages' ? 'الباقات أولاً بالأعلى' : 'القطع الفردية أولاً بالأعلى'})`
+    );
+  };
+
+  const handleSetPpfFirst = (first: 'packages' | 'parts') => {
+    const newOrder: ('packages' | 'parts')[] =
+      first === 'packages' ? ['packages', 'parts'] : ['parts', 'packages'];
+    const updated = {
+      ...catalogData,
+      ppf: {
+        ...catalogData.ppf,
+        subsectionsOrder: newOrder
+      }
+    };
+    saveCatalogData(
+      updated,
+      `ترتيب أقسام PPF: وضع (${first === 'packages' ? 'باقات الحماية' : 'القطع الفردية'}) في المقدمة بالأعلى`
+    );
+  };
+
+  const togglePpfPackagesEnabled = () => {
+    const current = catalogData.ppf.isPackagesEnabled !== false;
+    const updated = {
+      ...catalogData,
+      ppf: {
+        ...catalogData.ppf,
+        isPackagesEnabled: !current
+      }
+    };
+    saveCatalogData(updated, `${!current ? 'إظهار وتفعيل' : 'إخفاء'} قسم باقات PPF`);
+  };
+
+  const togglePpfPartsEnabled = () => {
+    const current = catalogData.ppf.isPartsEnabled !== false;
+    const updated = {
+      ...catalogData,
+      ppf: {
+        ...catalogData.ppf,
+        isPartsEnabled: !current
+      }
+    };
+    saveCatalogData(updated, `${!current ? 'إظهار وتفعيل' : 'إخفاء'} قسم قطع PPF الفردية`);
   };
 
   const toggleNanoNote = () => {
@@ -1069,12 +1137,12 @@ export const ProtectionTintCatalog: React.FC<ProtectionTintCatalogProps> = ({
                             }}
                             className="w-24 bg-orange-50 border border-orange-300 rounded px-2 py-1 text-sm font-black text-orange-600 text-left focus:outline-none"
                           />
-                          <span className="text-xs font-bold text-slate-700">ر.ق</span>
+                          <span className="text-xs font-bold text-slate-700">QAR</span>
                         </div>
                       ) : (
                         <div className="flex items-baseline gap-1 text-orange-600 font-black text-2xl tracking-tight">
                           <span>{item.price.toLocaleString()}</span>
-                          <span className="text-xs text-slate-700 font-bold">ر.ق</span>
+                          <span className="text-xs text-slate-700 font-bold">QAR</span>
                         </div>
                       )}
                     </div>
@@ -1243,11 +1311,11 @@ export const ProtectionTintCatalog: React.FC<ProtectionTintCatalogProps> = ({
                                 }}
                                 className="w-24 bg-orange-50 border border-orange-300 rounded px-2 py-1 text-xs font-black text-orange-600 text-left focus:outline-none"
                               />
-                              <span className="text-xs font-bold text-slate-700">ر.ق</span>
+                              <span className="text-xs font-bold text-slate-700">QAR</span>
                             </div>
                           ) : (
                             <span className="text-orange-600 font-black text-base">
-                              {item.price.toLocaleString()} <span className="text-xs text-slate-700 font-bold">ر.ق</span>
+                              {item.price.toLocaleString()} <span className="text-xs text-slate-700 font-bold">QAR</span>
                             </span>
                           )}
                         </td>
@@ -1274,393 +1342,604 @@ export const ProtectionTintCatalog: React.FC<ProtectionTintCatalogProps> = ({
         {/* ------------------------------------------------------------- */}
         {/* TAB 3: PPF (حماية PPF) */}
         {/* ------------------------------------------------------------- */}
-        {activeTab === 'ppf' && (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            
-            {/* Header info with editable brand names (UltraGuard, Onyx, Xpel) */}
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-slate-900 text-white p-4 rounded-xl">
-              <div className="flex-1">
-                <h4 className="font-black text-sm text-white flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-orange-400" />
-                  <span>
-                    {catalogData.ppf.title || 'مقارنة ماركات حماية PPF لـ'} ({vehicleType === 'sedan' ? 'صالون Sedan' : 'فورويل SUV'})
-                  </span>
-                </h4>
-                <p className="text-xs text-slate-300 mt-0.5">
-                  {catalogData.ppf.description || 'ضمان حقيقي ضد الخدوش والعوامل الجوية مع تشطيب شفاف ذاتي المعالجة'}
-                </p>
-              </div>
+        {activeTab === 'ppf' && (() => {
+          const ppfOrder = (catalogData.ppf.subsectionsOrder && catalogData.ppf.subsectionsOrder.length > 0)
+            ? catalogData.ppf.subsectionsOrder
+            : ['packages', 'parts'];
 
-              {/* Brands Pill Bar (Editable in edit mode) */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-[10px] text-slate-400 font-bold">الماركات:</span>
-                {catalogData.ppf.brands.map((brandName, bIdx) => (
-                  <div key={bIdx}>
-                    {isEditingData ? (
-                      <input
-                        type="text"
-                        value={brandName}
-                        onChange={(e) => {
-                          const updated = { ...catalogData };
-                          updated.ppf.brands[bIdx] = e.target.value;
-                          saveCatalogData(updated);
-                        }}
-                        className="bg-slate-800 text-orange-300 font-bold px-2 py-0.5 rounded text-xs border border-slate-700 focus:outline-none focus:border-orange-500 w-24 text-center"
-                        title={`تعديل اسم الماركة رقم ${bIdx + 1}`}
-                      />
-                    ) : (
-                      <span className={`px-2.5 py-1 rounded-lg text-xs font-black border ${
-                        bIdx === 2 
-                          ? 'bg-orange-600 text-white border-orange-500 shadow-2xs' 
-                          : 'bg-slate-800 text-slate-200 border-slate-700'
-                      }`}>
-                        {brandName}
+          // Sub-renderer for Parts
+          const renderPartsBlock = () => {
+            const isPartsFirst = ppfOrder[0] === 'parts';
+            const isEnabled = catalogData.ppf.isPartsEnabled !== false;
+            if (!isEnabled && !isEditingData) return null;
+
+            return (
+              <div key="parts" className={`space-y-2 rounded-2xl border p-3.5 transition-all ${
+                !isEnabled ? 'bg-slate-50/60 border-dashed border-slate-300 opacity-60' : 'bg-white border-slate-200 shadow-2xs'
+              }`}>
+                {/* Header with Title, Position Badge and Reorder controls */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {isEmployeeUnlocked && isEditingData && (
+                      <span className="w-5 h-5 rounded-full bg-slate-800 text-white text-[11px] font-black flex items-center justify-center shrink-0">
+                        {isPartsFirst ? '1' : '2'}
+                      </span>
+                    )}
+                    <h5 className="font-black text-slate-900 text-sm flex items-center gap-1.5">
+                      <Tag className="w-4 h-4 text-orange-600" />
+                      {isEditingData ? (
+                        <input
+                          type="text"
+                          value={catalogData.ppf.partsTitle || '[قطع فردية]'}
+                          onChange={(e) => {
+                            const updated = { ...catalogData };
+                            updated.ppf.partsTitle = e.target.value;
+                            saveCatalogData(updated);
+                          }}
+                          className="bg-slate-50 border border-slate-300 rounded px-2 py-0.5 text-xs font-bold"
+                          title="تعديل عنوان قسم القطع الفردية"
+                        />
+                      ) : (
+                        <span>{catalogData.ppf.partsTitle || '[قطع فردية]'}</span>
+                      )}
+                    </h5>
+
+                    <span className="text-[11px] text-slate-500 font-bold">
+                      {catalogData.ppf.partsSubTitle || 'الأسعار بالريال القطري (QAR)'} لسيارات {vehicleType === 'sedan' ? 'الصالون Sedan' : 'الفورويل SUV'}
+                    </span>
+
+                    {isEmployeeUnlocked && isEditingData && (
+                      <span className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-bold">
+                        {isPartsFirst ? 'الموقع: في الأعلى (المقدمة) ⬆️' : 'الموقع: في الأسفل ⬇️'}
                       </span>
                     )}
                   </div>
-                ))}
-              </div>
-            </div>
 
-            {/* Part 1: Individual Parts */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h5 className="font-black text-slate-900 text-sm flex items-center gap-1.5">
-                  <Tag className="w-4 h-4 text-orange-600" />
-                  {isEditingData ? (
-                    <input
-                      type="text"
-                      value={catalogData.ppf.partsTitle || '[قطع فردية]'}
-                      onChange={(e) => {
-                        const updated = { ...catalogData };
-                        updated.ppf.partsTitle = e.target.value;
-                        saveCatalogData(updated);
-                      }}
-                      className="bg-slate-50 border border-slate-300 rounded px-2 py-0.5 text-xs font-bold"
-                    />
-                  ) : (
-                    <span>{catalogData.ppf.partsTitle || '[قطع فردية]'}</span>
-                  )}
-                </h5>
-                <span className="text-[11px] text-slate-500 font-bold">
-                  {catalogData.ppf.partsSubTitle || 'الأسعار بالريال القطري (QAR)'} لسيارات {vehicleType === 'sedan' ? 'الصالون Sedan' : 'الفورويل SUV'}
-                </span>
-              </div>
+                  {/* Move Up/Down and Visibility Buttons */}
+                  {isEmployeeUnlocked && isEditingData && (
+                    <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                      <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleSetPpfFirst('parts')}
+                          disabled={isPartsFirst}
+                          className="px-2 py-1 rounded text-[11px] font-bold text-slate-700 hover:text-orange-600 hover:bg-white disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer flex items-center gap-1"
+                          title="نقل قسم القطع الفردية للأعلى ليكون الأول"
+                        >
+                          <ArrowUp className="w-3.5 h-3.5 text-orange-600" />
+                          <span>للأعلى ⬆️</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSetPpfFirst('packages')}
+                          disabled={!isPartsFirst}
+                          className="px-2 py-1 rounded text-[11px] font-bold text-slate-700 hover:text-orange-600 hover:bg-white disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer flex items-center gap-1"
+                          title="نقل قسم القطع الفردية للأسفل ليكون الثاني"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5 text-orange-600" />
+                          <span>للأسفل ⬇️</span>
+                        </button>
+                      </div>
 
-              <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-2xs">
-                <table className="w-full text-right text-xs">
-                  <thead className="bg-slate-100 text-slate-700 font-black border-b border-slate-200">
-                    <tr>
-                      <th className="p-3">القطعة</th>
-                      <th className="p-3 text-center bg-orange-500/5 text-slate-900">
-                        {catalogData.ppf.brands[0] || 'UltraGuard'}
-                      </th>
-                      <th className="p-3 text-center bg-slate-200/50 text-slate-900">
-                        {catalogData.ppf.brands[1] || 'Onyx'}
-                      </th>
-                      <th className="p-3 text-center bg-orange-600/10 text-orange-950 font-black">
-                        {catalogData.ppf.brands[2] || 'Xpel'}
-                      </th>
-                      {isEditingData && <th className="p-3 text-center w-16">إجراء</th>}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {catalogData.ppf.individualParts
-                      .filter((item) => matchesSearch(item.name))
-                      .map((item, idx) => (
-                        <tr key={item.id} className="hover:bg-orange-50/30 transition-colors group">
-                          <td className="p-3 font-bold text-slate-800 text-xs sm:text-sm">
-                            {isEditingData ? (
-                              <input
-                                type="text"
-                                value={item.name}
-                                onChange={(e) => {
-                                  const updated = { ...catalogData };
-                                  updated.ppf.individualParts[idx].name = e.target.value;
-                                  saveCatalogData(updated);
-                                }}
-                                className="w-full bg-slate-50 border border-slate-300 rounded px-1.5 py-0.5 text-xs font-bold"
-                              />
-                            ) : (
-                              <span>{item.name}</span>
-                            )}
-                          </td>
-                          
-                          {/* Brand 0 */}
-                          <td className="p-3 text-center font-black text-slate-800 bg-orange-500/5">
-                            {isEditingData ? (
-                              <input
-                                type="number"
-                                value={item.prices.brand0[vehicleType]}
-                                onChange={(e) => {
-                                  const val = Number(e.target.value);
-                                  const updated = { ...catalogData };
-                                  updated.ppf.individualParts[idx].prices.brand0[vehicleType] = val;
-                                  saveCatalogData(updated);
-                                }}
-                                className="w-20 bg-white border border-slate-300 rounded text-center py-0.5 text-xs font-bold"
-                              />
-                            ) : (
-                              <span>{item.prices.brand0[vehicleType].toLocaleString()} ر.ق</span>
-                            )}
-                          </td>
-
-                          {/* Brand 1 */}
-                          <td className="p-3 text-center font-black text-slate-800 bg-slate-200/40">
-                            {isEditingData ? (
-                              <input
-                                type="number"
-                                value={item.prices.brand1[vehicleType]}
-                                onChange={(e) => {
-                                  const val = Number(e.target.value);
-                                  const updated = { ...catalogData };
-                                  updated.ppf.individualParts[idx].prices.brand1[vehicleType] = val;
-                                  saveCatalogData(updated);
-                                }}
-                                className="w-20 bg-white border border-slate-300 rounded text-center py-0.5 text-xs font-bold"
-                              />
-                            ) : (
-                              <span>{item.prices.brand1[vehicleType].toLocaleString()} ر.ق</span>
-                            )}
-                          </td>
-
-                          {/* Brand 2 */}
-                          <td className="p-3 text-center font-black text-orange-600 bg-orange-600/10">
-                            {isEditingData ? (
-                              <input
-                                type="number"
-                                value={item.prices.brand2[vehicleType]}
-                                onChange={(e) => {
-                                  const val = Number(e.target.value);
-                                  const updated = { ...catalogData };
-                                  updated.ppf.individualParts[idx].prices.brand2[vehicleType] = val;
-                                  saveCatalogData(updated);
-                                }}
-                                className="w-20 bg-white border border-orange-300 rounded text-center py-0.5 text-xs font-black text-orange-600"
-                              />
-                            ) : (
-                              <span>{item.prices.brand2[vehicleType].toLocaleString()} ر.ق</span>
-                            )}
-                          </td>
-
-                          {isEditingData && (
-                            <td className="p-3 text-center">
-                              <button
-                                onClick={() => handleDeleteItem('ppf_part', item.id, item.name)}
-                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded"
-                                title="حذف القطعة"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </td>
-                          )}
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Part 2: Packages */}
-            <div className="space-y-2 pt-2">
-              <div className="flex items-center justify-between">
-                <h5 className="font-black text-slate-900 text-sm flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-orange-600" />
-                  <span>{catalogData.ppf.packagesTitle || '[باقات الحماية المتكاملة]'}</span>
-                </h5>
-                <span className="text-[11px] text-slate-500 font-bold">باقات شاملة التركيب والضمان</span>
-              </div>
-
-              <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-2xs">
-                <table className="w-full text-right text-xs">
-                  <thead className="bg-slate-900 text-white font-black border-b border-slate-800">
-                    <tr>
-                      <th className="p-3.5">
-                        {isEditingData ? (
-                          <input
-                            type="text"
-                            value={catalogData.ppf.packageTableHeader || 'اسم الباقة والتغطية'}
-                            onChange={(e) => {
-                              const updated = { ...catalogData };
-                              updated.ppf.packageTableHeader = e.target.value;
-                              saveCatalogData(updated);
-                            }}
-                            className="bg-slate-800 text-white px-2 py-0.5 rounded text-xs font-bold border border-slate-700"
-                          />
-                        ) : (
-                          <span>{catalogData.ppf.packageTableHeader || 'اسم الباقة والتغطية'}</span>
-                        )}
-                      </th>
-                      <th className="p-3.5 text-center text-slate-200">
-                        {catalogData.ppf.brands[0] || 'UltraGuard'}
-                      </th>
-                      <th className="p-3.5 text-center text-slate-200">
-                        {catalogData.ppf.brands[1] || 'Onyx'}
-                      </th>
-                      <th className="p-3.5 text-center text-orange-400 font-black">
-                        {catalogData.ppf.brands[2] || 'Xpel'}
-                      </th>
-                      {isEditingData && <th className="p-3.5 text-center w-16">إجراء</th>}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {catalogData.ppf.packages
-                      .filter((pkg) => matchesSearch(pkg.name))
-                      .map((pkg, idx) => (
-                        <tr key={pkg.id} className="hover:bg-orange-50/40 transition-colors">
-                          <td className="p-3.5 font-bold text-slate-900 text-sm">
-                            <div className="space-y-1">
-                              {isEditingData ? (
-                                <div className="space-y-1">
-                                  <input
-                                    type="text"
-                                    value={pkg.name}
-                                    onChange={(e) => {
-                                      const updated = { ...catalogData };
-                                      updated.ppf.packages[idx].name = e.target.value;
-                                      saveCatalogData(updated);
-                                    }}
-                                    className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1 text-xs font-bold"
-                                  />
-                                  <input
-                                    type="text"
-                                    value={pkg.badge || ''}
-                                    placeholder="شارة الباقة (مثلاً: عازل مجاني)"
-                                    onChange={(e) => {
-                                      const updated = { ...catalogData };
-                                      updated.ppf.packages[idx].badge = e.target.value;
-                                      saveCatalogData(updated);
-                                    }}
-                                    className="bg-slate-50 border border-slate-300 rounded px-2 py-0.5 text-[10px] text-emerald-700"
-                                  />
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span>{pkg.name}</span>
-                                  {pkg.badge && (
-                                    <span className="bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs">
-                                      {pkg.badge}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Brand 0 */}
-                          <td className="p-3.5 text-center font-black text-slate-800 bg-orange-500/5">
-                            {isEditingData ? (
-                              <input
-                                type="number"
-                                value={pkg.prices.brand0[vehicleType]}
-                                onChange={(e) => {
-                                  const val = Number(e.target.value);
-                                  const updated = { ...catalogData };
-                                  updated.ppf.packages[idx].prices.brand0[vehicleType] = val;
-                                  saveCatalogData(updated);
-                                }}
-                                className="w-20 bg-white border border-slate-300 rounded text-center py-1 text-xs font-bold"
-                              />
-                            ) : (
-                              <span>{pkg.prices.brand0[vehicleType].toLocaleString()} ر.ق</span>
-                            )}
-                          </td>
-
-                          {/* Brand 1 */}
-                          <td className="p-3.5 text-center font-black text-slate-800 bg-slate-200/40">
-                            {isEditingData ? (
-                              <input
-                                type="number"
-                                value={pkg.prices.brand1[vehicleType]}
-                                onChange={(e) => {
-                                  const val = Number(e.target.value);
-                                  const updated = { ...catalogData };
-                                  updated.ppf.packages[idx].prices.brand1[vehicleType] = val;
-                                  saveCatalogData(updated);
-                                }}
-                                className="w-20 bg-white border border-slate-300 rounded text-center py-1 text-xs font-bold"
-                              />
-                            ) : (
-                              <span>{pkg.prices.brand1[vehicleType].toLocaleString()} ر.ق</span>
-                            )}
-                          </td>
-
-                          {/* Brand 2 */}
-                          <td className="p-3.5 text-center font-black text-orange-600 bg-orange-600/10 text-sm">
-                            {isEditingData ? (
-                              <input
-                                type="number"
-                                value={pkg.prices.brand2[vehicleType]}
-                                onChange={(e) => {
-                                  const val = Number(e.target.value);
-                                  const updated = { ...catalogData };
-                                  updated.ppf.packages[idx].prices.brand2[vehicleType] = val;
-                                  saveCatalogData(updated);
-                                }}
-                                className="w-20 bg-white border border-orange-300 rounded text-center py-1 text-xs font-black text-orange-600"
-                              />
-                            ) : (
-                              <span>{pkg.prices.brand2[vehicleType].toLocaleString()} ر.ق</span>
-                            )}
-                          </td>
-
-                          {isEditingData && (
-                            <td className="p-3.5 text-center">
-                              <button
-                                onClick={() => handleDeleteItem('ppf_package', pkg.id, pkg.name)}
-                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded"
-                                title="حذف الباقة"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </td>
-                          )}
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Bottom PPF Note with Toggle Button */}
-            {(catalogData.ppf.isNoteEnabled !== false || isEditingData) && (
-              <div className={`p-3.5 rounded-xl text-xs font-bold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border transition-all ${
-                catalogData.ppf.isNoteEnabled === false
-                  ? 'bg-slate-100 border-dashed border-slate-300 opacity-60 text-slate-500'
-                  : 'bg-emerald-50 border-emerald-200 text-emerald-950'
-              }`}>
-                <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
-                  <Sparkles className={`w-4 h-4 shrink-0 ${catalogData.ppf.isNoteEnabled === false ? 'text-slate-400' : 'text-emerald-600'}`} />
-                  {isEditingData ? (
-                    <div className="flex items-center gap-2 flex-1">
-                      <input
-                        type="text"
-                        value={catalogData.ppf.note}
-                        onChange={(e) => {
-                          const updated = { ...catalogData };
-                          updated.ppf.note = e.target.value;
-                          saveCatalogData(updated);
-                        }}
-                        className="flex-1 bg-white border border-emerald-300 rounded px-2 py-1 text-xs font-bold text-emerald-950 focus:outline-none"
-                      />
                       <NoteToggleSwitch
-                        enabled={catalogData.ppf.isNoteEnabled !== false}
-                        onToggle={togglePpfNote}
-                        label="ملاحظة العازل المجاني"
+                        enabled={isEnabled}
+                        onToggle={togglePpfPartsEnabled}
+                        label="القسم"
                       />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewItemForm(prev => ({ ...prev, isPackage: false }));
+                          setIsAddModalOpen(true);
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-white text-[11px] font-bold shadow-2xs cursor-pointer"
+                        title="إضافة قطعة فردية جديدة"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>إضافة قطعة</span>
+                      </button>
                     </div>
-                  ) : (
-                    <span>{catalogData.ppf.note}</span>
                   )}
                 </div>
-                <span className="bg-emerald-600 text-white px-2 py-0.5 rounded-md text-[10px] font-black shrink-0">
-                  عرض خاص معتمد
-                </span>
-              </div>
-            )}
 
-          </div>
-        )}
+                {/* Table */}
+                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                  <table className="w-full text-right text-xs">
+                    <thead className="bg-slate-100 text-slate-700 font-black border-b border-slate-200">
+                      <tr>
+                        <th className="p-3">القطعة</th>
+                        <th className="p-3 text-center bg-orange-500/5 text-slate-900">
+                          {catalogData.ppf.brands[0] || 'UltraGuard'}
+                        </th>
+                        <th className="p-3 text-center bg-slate-200/50 text-slate-900">
+                          {catalogData.ppf.brands[1] || 'Onyx'}
+                        </th>
+                        <th className="p-3 text-center bg-orange-600/10 text-orange-950 font-black">
+                          {catalogData.ppf.brands[2] || 'Xpel'}
+                        </th>
+                        {isEditingData && <th className="p-3 text-center w-16">إجراء</th>}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {catalogData.ppf.individualParts
+                        .filter((item) => matchesSearch(item.name))
+                        .map((item, idx) => (
+                          <tr key={item.id} className="hover:bg-orange-50/30 transition-colors group">
+                            <td className="p-3 font-bold text-slate-800 text-xs sm:text-sm">
+                              {isEditingData ? (
+                                <input
+                                  type="text"
+                                  value={item.name}
+                                  onChange={(e) => {
+                                    const updated = { ...catalogData };
+                                    updated.ppf.individualParts[idx].name = e.target.value;
+                                    saveCatalogData(updated);
+                                  }}
+                                  className="w-full bg-slate-50 border border-slate-300 rounded px-1.5 py-0.5 text-xs font-bold"
+                                />
+                              ) : (
+                                <span>{item.name}</span>
+                              )}
+                            </td>
+                            
+                            {/* Brand 0 */}
+                            <td className="p-3 text-center font-black text-slate-800 bg-orange-500/5">
+                              {isEditingData ? (
+                                <input
+                                  type="number"
+                                  value={item.prices.brand0[vehicleType]}
+                                  onChange={(e) => {
+                                    const val = Number(e.target.value);
+                                    const updated = { ...catalogData };
+                                    updated.ppf.individualParts[idx].prices.brand0[vehicleType] = val;
+                                    saveCatalogData(updated);
+                                  }}
+                                  className="w-20 bg-white border border-slate-300 rounded text-center py-0.5 text-xs font-bold"
+                                />
+                              ) : (
+                                <span>{item.prices.brand0[vehicleType].toLocaleString()} QAR</span>
+                              )}
+                            </td>
+
+                            {/* Brand 1 */}
+                            <td className="p-3 text-center font-black text-slate-800 bg-slate-200/40">
+                              {isEditingData ? (
+                                <input
+                                  type="number"
+                                  value={item.prices.brand1[vehicleType]}
+                                  onChange={(e) => {
+                                    const val = Number(e.target.value);
+                                    const updated = { ...catalogData };
+                                    updated.ppf.individualParts[idx].prices.brand1[vehicleType] = val;
+                                    saveCatalogData(updated);
+                                  }}
+                                  className="w-20 bg-white border border-slate-300 rounded text-center py-0.5 text-xs font-bold"
+                                />
+                              ) : (
+                                <span>{item.prices.brand1[vehicleType].toLocaleString()} QAR</span>
+                              )}
+                            </td>
+
+                            {/* Brand 2 */}
+                            <td className="p-3 text-center font-black text-orange-600 bg-orange-600/10">
+                              {isEditingData ? (
+                                <input
+                                  type="number"
+                                  value={item.prices.brand2[vehicleType]}
+                                  onChange={(e) => {
+                                    const val = Number(e.target.value);
+                                    const updated = { ...catalogData };
+                                    updated.ppf.individualParts[idx].prices.brand2[vehicleType] = val;
+                                    saveCatalogData(updated);
+                                  }}
+                                  className="w-20 bg-white border border-orange-300 rounded text-center py-0.5 text-xs font-black text-orange-600"
+                                />
+                              ) : (
+                                <span>{item.prices.brand2[vehicleType].toLocaleString()} QAR</span>
+                              )}
+                            </td>
+
+                            {isEditingData && (
+                              <td className="p-3 text-center">
+                                <button
+                                  onClick={() => handleDeleteItem('ppf_part', item.id, item.name)}
+                                  className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded"
+                                  title="حذف القطعة"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          };
+
+          // Sub-renderer for Packages
+          const renderPackagesBlock = () => {
+            const isPackagesFirst = ppfOrder[0] === 'packages';
+            const isEnabled = catalogData.ppf.isPackagesEnabled !== false;
+            if (!isEnabled && !isEditingData) return null;
+
+            return (
+              <div key="packages" className={`space-y-2 rounded-2xl border p-3.5 transition-all ${
+                !isEnabled ? 'bg-slate-50/60 border-dashed border-slate-300 opacity-60' : 'bg-white border-slate-200 shadow-2xs'
+              }`}>
+                {/* Header with Title, Position Badge and Reorder controls */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {isEmployeeUnlocked && isEditingData && (
+                      <span className="w-5 h-5 rounded-full bg-orange-600 text-white text-[11px] font-black flex items-center justify-center shrink-0">
+                        {isPackagesFirst ? '1' : '2'}
+                      </span>
+                    )}
+                    <h5 className="font-black text-slate-900 text-sm flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-orange-600" />
+                      {isEditingData ? (
+                        <input
+                          type="text"
+                          value={catalogData.ppf.packagesTitle || '[باقات الحماية المتكاملة]'}
+                          onChange={(e) => {
+                            const updated = { ...catalogData };
+                            updated.ppf.packagesTitle = e.target.value;
+                            saveCatalogData(updated);
+                          }}
+                          className="bg-slate-50 border border-slate-300 rounded px-2 py-0.5 text-xs font-bold"
+                          title="تعديل عنوان قسم باقات الحماية"
+                        />
+                      ) : (
+                        <span>{catalogData.ppf.packagesTitle || '[باقات الحماية المتكاملة]'}</span>
+                      )}
+                    </h5>
+                    <span className="text-[11px] text-slate-500 font-bold">باقات شاملة التركيب والضمان المعتمد</span>
+                    {isEmployeeUnlocked && isEditingData && (
+                      <span className="text-[10px] bg-orange-50 text-orange-800 px-2 py-0.5 rounded font-bold border border-orange-200">
+                        {isPackagesFirst ? 'الموقع: في الأعلى (المقدمة) ⬆️' : 'الموقع: في الأسفل ⬇️'}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Move Up/Down and Visibility Buttons */}
+                  {isEmployeeUnlocked && isEditingData && (
+                    <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                      <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleSetPpfFirst('packages')}
+                          disabled={isPackagesFirst}
+                          className="px-2 py-1 rounded text-[11px] font-bold text-slate-700 hover:text-orange-600 hover:bg-white disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer flex items-center gap-1"
+                          title="نقل قسم الباقات للأعلى ليكون الأول"
+                        >
+                          <ArrowUp className="w-3.5 h-3.5 text-orange-600" />
+                          <span>للأعلى ⬆️</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSetPpfFirst('parts')}
+                          disabled={!isPackagesFirst}
+                          className="px-2 py-1 rounded text-[11px] font-bold text-slate-700 hover:text-orange-600 hover:bg-white disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer flex items-center gap-1"
+                          title="نقل قسم الباقات للأسفل ليكون الثاني"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5 text-orange-600" />
+                          <span>للأسفل ⬇️</span>
+                        </button>
+                      </div>
+
+                      <NoteToggleSwitch
+                        enabled={isEnabled}
+                        onToggle={togglePpfPackagesEnabled}
+                        label="القسم"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewItemForm(prev => ({ ...prev, isPackage: true }));
+                          setIsAddModalOpen(true);
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold shadow-2xs cursor-pointer"
+                        title="إضافة باقة حماية جديدة"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>إضافة باقة</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Table */}
+                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                  <table className="w-full text-right text-xs">
+                    <thead className="bg-slate-900 text-white font-black border-b border-slate-800">
+                      <tr>
+                        <th className="p-3.5">
+                          {isEditingData ? (
+                            <input
+                              type="text"
+                              value={catalogData.ppf.packageTableHeader || 'اسم الباقة والتغطية'}
+                              onChange={(e) => {
+                                const updated = { ...catalogData };
+                                updated.ppf.packageTableHeader = e.target.value;
+                                saveCatalogData(updated);
+                              }}
+                              className="bg-slate-800 text-white px-2 py-0.5 rounded text-xs font-bold border border-slate-700"
+                            />
+                          ) : (
+                            <span>{catalogData.ppf.packageTableHeader || 'اسم الباقة والتغطية'}</span>
+                          )}
+                        </th>
+                        <th className="p-3.5 text-center text-slate-200">
+                          {catalogData.ppf.brands[0] || 'UltraGuard'}
+                        </th>
+                        <th className="p-3.5 text-center text-slate-200">
+                          {catalogData.ppf.brands[1] || 'Onyx'}
+                        </th>
+                        <th className="p-3.5 text-center text-orange-400 font-black">
+                          {catalogData.ppf.brands[2] || 'Xpel'}
+                        </th>
+                        {isEditingData && <th className="p-3.5 text-center w-16">إجراء</th>}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {catalogData.ppf.packages
+                        .filter((pkg) => matchesSearch(pkg.name))
+                        .map((pkg, idx) => (
+                          <tr key={pkg.id} className="hover:bg-orange-50/40 transition-colors">
+                            <td className="p-3.5 font-bold text-slate-900 text-sm">
+                              <div className="space-y-1">
+                                {isEditingData ? (
+                                  <div className="space-y-1">
+                                    <input
+                                      type="text"
+                                      value={pkg.name}
+                                      onChange={(e) => {
+                                        const updated = { ...catalogData };
+                                        updated.ppf.packages[idx].name = e.target.value;
+                                        saveCatalogData(updated);
+                                      }}
+                                      className="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1 text-xs font-bold"
+                                    />
+                                    <input
+                                      type="text"
+                                      value={pkg.badge || ''}
+                                      placeholder="شارة الباقة (مثلاً: عازل مجاني)"
+                                      onChange={(e) => {
+                                        const updated = { ...catalogData };
+                                        updated.ppf.packages[idx].badge = e.target.value;
+                                        saveCatalogData(updated);
+                                      }}
+                                      className="bg-slate-50 border border-slate-300 rounded px-2 py-0.5 text-[10px] text-emerald-700"
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span>{pkg.name}</span>
+                                    {pkg.badge && (
+                                      <span className="bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs">
+                                        {pkg.badge}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Brand 0 */}
+                            <td className="p-3.5 text-center font-black text-slate-800 bg-orange-500/5">
+                              {isEditingData ? (
+                                <input
+                                  type="number"
+                                  value={pkg.prices.brand0[vehicleType]}
+                                  onChange={(e) => {
+                                    const val = Number(e.target.value);
+                                    const updated = { ...catalogData };
+                                    updated.ppf.packages[idx].prices.brand0[vehicleType] = val;
+                                    saveCatalogData(updated);
+                                  }}
+                                  className="w-20 bg-white border border-slate-300 rounded text-center py-1 text-xs font-bold"
+                                />
+                              ) : (
+                                <span>{pkg.prices.brand0[vehicleType].toLocaleString()} QAR</span>
+                              )}
+                            </td>
+
+                            {/* Brand 1 */}
+                            <td className="p-3.5 text-center font-black text-slate-800 bg-slate-200/40">
+                              {isEditingData ? (
+                                <input
+                                  type="number"
+                                  value={pkg.prices.brand1[vehicleType]}
+                                  onChange={(e) => {
+                                    const val = Number(e.target.value);
+                                    const updated = { ...catalogData };
+                                    updated.ppf.packages[idx].prices.brand1[vehicleType] = val;
+                                    saveCatalogData(updated);
+                                  }}
+                                  className="w-20 bg-white border border-slate-300 rounded text-center py-1 text-xs font-bold"
+                                />
+                              ) : (
+                                <span>{pkg.prices.brand1[vehicleType].toLocaleString()} QAR</span>
+                              )}
+                            </td>
+
+                            {/* Brand 2 */}
+                            <td className="p-3.5 text-center font-black text-orange-600 bg-orange-600/10 text-sm">
+                              {isEditingData ? (
+                                <input
+                                  type="number"
+                                  value={pkg.prices.brand2[vehicleType]}
+                                  onChange={(e) => {
+                                    const val = Number(e.target.value);
+                                    const updated = { ...catalogData };
+                                    updated.ppf.packages[idx].prices.brand2[vehicleType] = val;
+                                    saveCatalogData(updated);
+                                  }}
+                                  className="w-20 bg-white border border-orange-300 rounded text-center py-1 text-xs font-black text-orange-600"
+                                />
+                              ) : (
+                                <span>{pkg.prices.brand2[vehicleType].toLocaleString()} QAR</span>
+                              )}
+                            </td>
+
+                            {isEditingData && (
+                              <td className="p-3.5 text-center">
+                                <button
+                                  onClick={() => handleDeleteItem('ppf_package', pkg.id, pkg.name)}
+                                  className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded"
+                                  title="حذف الباقة"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          };
+
+          return (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              {/* Header info with editable brand names (UltraGuard, Onyx, Xpel) */}
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-slate-900 text-white p-4 rounded-xl">
+                <div className="flex-1">
+                  <h4 className="font-black text-sm text-white flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-orange-400" />
+                    <span>
+                      {catalogData.ppf.title || 'مقارنة ماركات حماية PPF لـ'} ({vehicleType === 'sedan' ? 'صالون Sedan' : 'فورويل SUV'})
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    {catalogData.ppf.description || 'ضمان حقيقي ضد الخدوش والعوامل الجوية مع تشطيب شفاف ذاتي المعالجة'}
+                  </p>
+                </div>
+
+                {/* Brands Pill Bar (Editable in edit mode) */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] text-slate-400 font-bold">الماركات:</span>
+                  {catalogData.ppf.brands.map((brandName, bIdx) => (
+                    <div key={bIdx}>
+                      {isEditingData ? (
+                        <input
+                          type="text"
+                          value={brandName}
+                          onChange={(e) => {
+                            const updated = { ...catalogData };
+                            updated.ppf.brands[bIdx] = e.target.value;
+                            saveCatalogData(updated);
+                          }}
+                          className="bg-slate-800 text-orange-300 font-bold px-2 py-0.5 rounded text-xs border border-slate-700 focus:outline-none focus:border-orange-500 w-24 text-center"
+                          title={`تعديل اسم الماركة رقم ${bIdx + 1}`}
+                        />
+                      ) : (
+                        <span className={`px-2.5 py-1 rounded-lg text-xs font-black border ${
+                          bIdx === 2 
+                            ? 'bg-orange-600 text-white border-orange-500 shadow-2xs' 
+                            : 'bg-slate-800 text-slate-200 border-slate-700'
+                        }`}>
+                          {brandName}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Subsections Controller Bar: ONLY shown when employee is logged in AND in editing mode */}
+              {isEmployeeUnlocked && isEditingData && (
+                <div className="bg-orange-50/70 border border-orange-200 rounded-xl p-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs shadow-2xs">
+                  <div className="flex items-center gap-2">
+                    <ArrowUpDown className="w-4 h-4 text-orange-600 shrink-0" />
+                    <span className="font-black text-slate-900">
+                      التحكم بالأقسام الفرعية لـ PPF (تحديد من بالأعلى ومن بالأسفل):
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
+                    <div className="inline-flex rounded-lg border border-orange-200 p-0.5 bg-white shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => handleSetPpfFirst('packages')}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                          ppfOrder[0] === 'packages'
+                            ? 'bg-orange-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                        }`}
+                        title="جعل باقات الحماية تظهر أولاً في الأعلى"
+                      >
+                        <span>🏆 باقات الحماية بالأعلى ⬆️</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetPpfFirst('parts')}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                          ppfOrder[0] === 'parts'
+                            ? 'bg-orange-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                        }`}
+                        title="جعل القطع الفردية تظهر أولاً في الأعلى"
+                      >
+                        <span>🏷️ القطع الفردية بالأعلى ⬆️</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Render dynamic Subsections in requested order */}
+              <div className="space-y-6">
+                {ppfOrder.map((key) => {
+                  if (key === 'packages') return renderPackagesBlock();
+                  if (key === 'parts') return renderPartsBlock();
+                  return null;
+                })}
+              </div>
+
+              {/* Bottom PPF Note with Toggle Button */}
+              {(catalogData.ppf.isNoteEnabled !== false || isEditingData) && (
+                <div className={`p-3.5 rounded-xl text-xs font-bold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border transition-all ${
+                  catalogData.ppf.isNoteEnabled === false
+                    ? 'bg-slate-100 border-dashed border-slate-300 opacity-60 text-slate-500'
+                    : 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                }`}>
+                  <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
+                    <Sparkles className={`w-4 h-4 shrink-0 ${catalogData.ppf.isNoteEnabled === false ? 'text-slate-400' : 'text-emerald-600'}`} />
+                    {isEditingData ? (
+                      <div className="flex items-center gap-2 flex-1">
+                        <input
+                          type="text"
+                          value={catalogData.ppf.note}
+                          onChange={(e) => {
+                            const updated = { ...catalogData };
+                            updated.ppf.note = e.target.value;
+                            saveCatalogData(updated);
+                          }}
+                          className="flex-1 bg-white border border-emerald-300 rounded px-2 py-1 text-xs font-bold text-emerald-950 focus:outline-none"
+                        />
+                        <NoteToggleSwitch
+                          enabled={catalogData.ppf.isNoteEnabled !== false}
+                          onToggle={togglePpfNote}
+                          label="ملاحظة العازل المجاني"
+                        />
+                      </div>
+                    ) : (
+                      <span>{catalogData.ppf.note}</span>
+                    )}
+                  </div>
+                  <span className="bg-emerald-600 text-white px-2 py-0.5 rounded-md text-[10px] font-black shrink-0">
+                    عرض خاص معتمد
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ------------------------------------------------------------- */}
         {/* TAB 4: THERMAL TINT (العازل الحراري) */}
@@ -1779,7 +2058,7 @@ export const ProtectionTintCatalog: React.FC<ProtectionTintCatalogProps> = ({
                               className="w-20 bg-white border border-slate-300 rounded text-center py-1 text-xs font-bold"
                             />
                           ) : (
-                            <span>{item.prices.brand0[vehicleType].toLocaleString()} ر.ق</span>
+                            <span>{item.prices.brand0[vehicleType].toLocaleString()} QAR</span>
                           )}
                         </td>
 
@@ -1798,7 +2077,7 @@ export const ProtectionTintCatalog: React.FC<ProtectionTintCatalogProps> = ({
                               className="w-20 bg-white border border-slate-300 rounded text-center py-1 text-xs font-bold"
                             />
                           ) : (
-                            <span>{item.prices.brand1[vehicleType].toLocaleString()} ر.ق</span>
+                            <span>{item.prices.brand1[vehicleType].toLocaleString()} QAR</span>
                           )}
                         </td>
 
@@ -1817,7 +2096,7 @@ export const ProtectionTintCatalog: React.FC<ProtectionTintCatalogProps> = ({
                               className="w-20 bg-white border border-orange-300 rounded text-center py-1 text-xs font-black text-orange-600"
                             />
                           ) : (
-                            <span>{item.prices.brand2[vehicleType].toLocaleString()} ر.ق</span>
+                            <span>{item.prices.brand2[vehicleType].toLocaleString()} QAR</span>
                           )}
                         </td>
 
@@ -1981,12 +2260,12 @@ export const ProtectionTintCatalog: React.FC<ProtectionTintCatalogProps> = ({
                             }}
                             className="w-24 bg-orange-50 border border-orange-300 rounded px-2 py-1 text-sm font-black text-orange-600 text-left"
                           />
-                          <span className="text-xs font-bold text-slate-700">ر.ق</span>
+                          <span className="text-xs font-bold text-slate-700">QAR</span>
                         </div>
                       ) : (
                         <div className="flex items-baseline gap-1 text-orange-600 font-black text-2xl tracking-tight">
                           <span>{item.price.toLocaleString()}</span>
-                          <span className="text-xs text-slate-700 font-bold">ر.ق</span>
+                          <span className="text-xs text-slate-700 font-bold">QAR</span>
                         </div>
                       )}
                     </div>
@@ -2098,11 +2377,11 @@ export const ProtectionTintCatalog: React.FC<ProtectionTintCatalogProps> = ({
                                 }}
                                 className="w-24 bg-orange-50 border border-orange-300 rounded px-2 py-1 text-xs font-black text-orange-600 text-left"
                               />
-                              <span className="text-xs font-bold text-slate-700">ر.ق</span>
+                              <span className="text-xs font-bold text-slate-700">QAR</span>
                             </div>
                           ) : (
                             <span className="text-orange-600 font-black text-base">
-                              {item.price.toLocaleString()} <span className="text-xs text-slate-700 font-bold">ر.ق</span>
+                              {item.price.toLocaleString()} <span className="text-xs text-slate-700 font-bold">QAR</span>
                             </span>
                           )}
                         </td>

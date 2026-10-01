@@ -48,7 +48,8 @@ import {
   Undo2,
   Redo2,
   History,
-  CheckCircle2
+  CheckCircle2,
+  ShieldCheck
 } from 'lucide-react';
 
 interface EmployeePanelProps {
@@ -161,6 +162,7 @@ export const EmployeePanel: React.FC<EmployeePanelProps> = ({
   const [catCarModel, setCatCarModel] = useState('');
   const [catMainImageUrl, setCatMainImageUrl] = useState('');
   const [catDescription, setCatDescription] = useState('');
+  const [catLayoutType, setCatLayoutType] = useState<'standard' | 'protection_tint'>('standard');
   const [categoryFormError, setCategoryFormError] = useState('');
   const [isClearingImages, setIsClearingImages] = useState(false);
 
@@ -250,6 +252,7 @@ export const EmployeePanel: React.FC<EmployeePanelProps> = ({
       setCatCarModel(editingCategory.carModel);
       setCatMainImageUrl(editingCategory.mainCarImageUrl);
       setCatDescription(editingCategory.description || '');
+      setCatLayoutType(editingCategory.layoutType || (editingCategory.id === 'cat-protection-tint' ? 'protection_tint' : 'standard'));
       setCategoryFormError('');
     } else {
       setCatName('');
@@ -257,6 +260,7 @@ export const EmployeePanel: React.FC<EmployeePanelProps> = ({
       setCatCarModel('');
       setCatMainImageUrl(sampleCarImages[0]);
       setCatDescription('');
+      setCatLayoutType('standard');
     }
   }, [editingCategory]);
 
@@ -349,6 +353,7 @@ export const EmployeePanel: React.FC<EmployeePanelProps> = ({
     setCatCarModel(cat.carModel);
     setCatMainImageUrl(cat.mainCarImageUrl);
     setCatDescription(cat.description || '');
+    setCatLayoutType(cat.layoutType || (cat.id === 'cat-protection-tint' ? 'protection_tint' : 'standard'));
     setCategoryFormError('');
     setTimeout(() => {
       document.getElementById('category-edit-form')?.scrollIntoView({ behavior: 'smooth' });
@@ -362,6 +367,7 @@ export const EmployeePanel: React.FC<EmployeePanelProps> = ({
     setCatCarModel('');
     setCatMainImageUrl(sampleCarImages[0]);
     setCatDescription('');
+    setCatLayoutType('standard');
     setCategoryFormError('');
   };
 
@@ -383,6 +389,7 @@ export const EmployeePanel: React.FC<EmployeePanelProps> = ({
         carModel: catCarModel.trim(),
         mainCarImageUrl: catMainImageUrl || sampleCarImages[0],
         description: catDescription.trim(),
+        layoutType: catLayoutType,
       });
       handleCancelCategoryEdit();
       onClose();
@@ -1393,13 +1400,53 @@ export const EmployeePanel: React.FC<EmployeePanelProps> = ({
                           <div className="min-w-0">
                             <h5 className="font-bold text-xs text-slate-900 truncate">{cat.name}</h5>
                             <p className="text-[11px] text-slate-500 truncate">{cat.carModel}</p>
-                            <span className="inline-block mt-0.5 text-[10px] bg-slate-200 text-slate-700 px-2 py-0.2 rounded font-bold">
-                              {catProductsCount} منتج
-                            </span>
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                              <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-bold">
+                                {catProductsCount} منتج
+                              </span>
+                              <span className={`text-[10px] px-2 py-0.5 rounded font-bold border ${
+                                (cat.layoutType === 'protection_tint' || cat.id === 'cat-protection-tint')
+                                  ? 'bg-orange-100 text-orange-900 border-orange-200'
+                                  : 'bg-slate-100 text-slate-700 border-slate-200'
+                              }`}>
+                                {(cat.layoutType === 'protection_tint' || cat.id === 'cat-protection-tint') ? '🛡️ أسلوب الحماية' : '📦 قسم عادي'}
+                              </span>
+                            </div>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex items-center gap-1 shrink-0 flex-wrap sm:flex-nowrap justify-end">
+                          {/* Quick Layout Style Switcher Button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const isProt = (cat.layoutType === 'protection_tint' || cat.id === 'cat-protection-tint');
+                              const nextLayout: 'standard' | 'protection_tint' = isProt ? 'standard' : 'protection_tint';
+                              onSaveCategory({
+                                ...cat,
+                                layoutType: nextLayout
+                              });
+                            }}
+                            className={`inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-colors cursor-pointer ${
+                              (cat.layoutType === 'protection_tint' || cat.id === 'cat-protection-tint')
+                                ? 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
+                                : 'bg-orange-50 text-orange-700 border-orange-300 hover:bg-orange-100'
+                            }`}
+                            title={(cat.layoutType === 'protection_tint' || cat.id === 'cat-protection-tint') ? 'التحويل إلى قسم عادي (شبكة منتجات)' : 'التحويل إلى أسلوب الحماية والعازل الحراري'}
+                          >
+                            {(cat.layoutType === 'protection_tint' || cat.id === 'cat-protection-tint') ? (
+                              <>
+                                <Layers className="w-3.5 h-3.5 text-slate-600" />
+                                <span className="hidden sm:inline">تحويل لعادي</span>
+                              </>
+                            ) : (
+                              <>
+                                <ShieldCheck className="w-3.5 h-3.5 text-orange-600" />
+                                <span className="hidden sm:inline">تحويل لحماية</span>
+                              </>
+                            )}
+                          </button>
+
                           {/* Quick Up/Down arrows */}
                           {onSaveCategoryOrder && (
                             <div className="flex items-center gap-0.5 bg-white border border-slate-200 rounded-lg p-0.5">
@@ -1414,7 +1461,7 @@ export const EmployeePanel: React.FC<EmployeePanelProps> = ({
                                   copy[catIdx - 1] = temp;
                                   onSaveCategoryOrder(copy);
                                 }}
-                                className="p-1 hover:bg-orange-50 hover:text-orange-600 text-slate-600 rounded disabled:opacity-20 disabled:pointer-events-none transition-colors"
+                                className="p-1 hover:bg-orange-50 hover:text-orange-600 text-slate-600 rounded disabled:opacity-20 disabled:pointer-events-none transition-colors cursor-pointer"
                                 title="تحريك لأعلى"
                               >
                                 <ArrowUp className="w-3.5 h-3.5" />
@@ -1430,7 +1477,7 @@ export const EmployeePanel: React.FC<EmployeePanelProps> = ({
                                   copy[catIdx + 1] = temp;
                                   onSaveCategoryOrder(copy);
                                 }}
-                                className="p-1 hover:bg-orange-50 hover:text-orange-600 text-slate-600 rounded disabled:opacity-20 disabled:pointer-events-none transition-colors"
+                                className="p-1 hover:bg-orange-50 hover:text-orange-600 text-slate-600 rounded disabled:opacity-20 disabled:pointer-events-none transition-colors cursor-pointer"
                                 title="تحريك لأسفل"
                               >
                                 <ArrowDown className="w-3.5 h-3.5" />
@@ -1441,7 +1488,7 @@ export const EmployeePanel: React.FC<EmployeePanelProps> = ({
                           <button
                             type="button"
                             onClick={() => handleStartEditCategory(cat)}
-                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[11px] font-bold border border-blue-200 transition-colors"
+                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[11px] font-bold border border-blue-200 transition-colors cursor-pointer"
                             title="تعديل اسم وموديل وصورة هذا القسم"
                           >
                             <Pencil className="w-3.5 h-3.5" />
@@ -1457,7 +1504,7 @@ export const EmployeePanel: React.FC<EmployeePanelProps> = ({
                                 count: catProductsCount
                               });
                             }}
-                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 text-[11px] font-bold border border-rose-200 transition-colors"
+                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 text-[11px] font-bold border border-rose-200 transition-colors cursor-pointer"
                             title="حذف هذا القسم وكافة منتجاته"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -1500,6 +1547,61 @@ export const EmployeePanel: React.FC<EmployeePanelProps> = ({
                     <span>إنشاء قسم سيارة جديد:</span>
                   </h4>
                 )}
+
+                {/* Category Style / Layout Selection (قسم عادي vs قسم بأسلوب الحماية والعزل) */}
+                <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/80 space-y-2">
+                  <label className="block text-xs font-black text-slate-900 flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-orange-600" />
+                    <span>شكل وتنسيق عرض القسم في المتجر:</span>
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setCatLayoutType('standard')}
+                      className={`p-3 rounded-xl border text-right transition-all flex flex-col gap-1 cursor-pointer ${
+                        catLayoutType === 'standard'
+                          ? 'bg-orange-50 border-orange-500 ring-2 ring-orange-500/20 shadow-xs'
+                          : 'bg-white border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-black text-xs text-slate-900 flex items-center gap-1.5">
+                          <Layers className="w-3.5 h-3.5 text-orange-600" />
+                          <span>قسم عادي (شبكة منتجات)</span>
+                        </span>
+                        {catLayoutType === 'standard' && (
+                          <CheckCircle2 className="w-4 h-4 text-orange-600" />
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        عرض بطاقات المنتجات مع الباركود، الصور، الفرز بالسعر والتاريخ، والسحب والإفلات.
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCatLayoutType('protection_tint')}
+                      className={`p-3 rounded-xl border text-right transition-all flex flex-col gap-1 cursor-pointer ${
+                        catLayoutType === 'protection_tint'
+                          ? 'bg-orange-50 border-orange-500 ring-2 ring-orange-500/20 shadow-xs'
+                          : 'bg-white border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-black text-xs text-slate-900 flex items-center gap-1.5">
+                          <ShieldCheck className="w-3.5 h-3.5 text-orange-600" />
+                          <span>قسم بأسلوب الحماية والعزل الحراري</span>
+                        </span>
+                        {catLayoutType === 'protection_tint' && (
+                          <CheckCircle2 className="w-4 h-4 text-orange-600" />
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        جداول عروض تفاعلية، تبويبات خدمات، باقات، أسعار ماركات متقارنة، وفئات صالون/فورويل.
+                      </p>
+                    </button>
+                  </div>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">

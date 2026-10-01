@@ -1079,30 +1079,45 @@ export default function App() {
             )}
 
             {/* Quick Switch to Protection & Tinting Catalog */}
-            {activeCategoryId !== 'cat-protection-tint' ? (
-              <button
-                onClick={() => {
-                  setActiveCategoryId('cat-protection-tint');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-orange-300 bg-orange-50 hover:bg-orange-100 text-orange-950 text-[11px] font-bold transition-all shadow-2xs"
-                title="الانتقال المباشر لكتالوج خدمات الحماية والعازل الحراري والبولش"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-orange-600" />
-                <span>خدمات الحماية والعازل الحراري 🔥</span>
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  const firstCar = categories.find(c => c.id !== 'cat-protection-tint');
-                  if (firstCar) setActiveCategoryId(firstCar.id);
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 text-[11px] font-bold transition-all shadow-2xs"
-                title="الرجوع لكتالوج أكسسوارات السيارات"
-              >
-                <span>← العودة لأكسسوارات السيارات</span>
-              </button>
-            )}
+            {(() => {
+              const activeCat = categories.find(c => c.id === activeCategoryId);
+              const isActiveProtection = activeCat?.layoutType === 'protection_tint' || activeCategoryId === 'cat-protection-tint';
+              const protectionCat = categories.find(c => c.layoutType === 'protection_tint' || c.id === 'cat-protection-tint');
+              const standardCat = categories.find(c => c.layoutType !== 'protection_tint' && c.id !== 'cat-protection-tint');
+
+              if (!isActiveProtection && protectionCat) {
+                return (
+                  <button
+                    onClick={() => {
+                      setActiveCategoryId(protectionCat.id);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-orange-300 bg-orange-50 hover:bg-orange-100 text-orange-950 text-[11px] font-bold transition-all shadow-2xs cursor-pointer"
+                    title="الانتقال المباشر لكتالوج خدمات الحماية والعازل الحراري والبولش"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-orange-600" />
+                    <span>{protectionCat.name} 🔥</span>
+                  </button>
+                );
+              }
+
+              if (isActiveProtection && standardCat) {
+                return (
+                  <button
+                    onClick={() => {
+                      setActiveCategoryId(standardCat.id);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 text-[11px] font-bold transition-all shadow-2xs cursor-pointer"
+                    title="الرجوع لكتالوج أكسسوارات السيارات"
+                  >
+                    <span>← العودة لأكسسوارات السيارات ({standardCat.name})</span>
+                  </button>
+                );
+              }
+
+              return null;
+            })()}
 
           </div>
 
@@ -1125,7 +1140,8 @@ export default function App() {
         {categoriesToDisplay.length > 0 ? (
           <>
             {categoriesToDisplay.map((cat) => {
-              if (cat.id === 'cat-protection-tint') {
+              const isProtectionStyle = cat.layoutType === 'protection_tint' || cat.id === 'cat-protection-tint';
+              if (isProtectionStyle) {
                 return (
                   <section key={cat.id} className="space-y-4">
                     <CategoryHeader

@@ -86,7 +86,8 @@ export const formatCategoryForSupabase = (cat: CarCategory) => ({
     name: cat.name,
     carModel: cat.carModel,
     headerTitle: cat.headerTitle,
-    order: cat.order
+    order: cat.order,
+    layoutType: cat.layoutType || (cat.id === 'cat-protection-tint' ? 'protection_tint' : 'standard')
   }
 });
 
@@ -99,17 +100,20 @@ export const parseCategoryFromSupabase = (row: any): CarCategory => {
       carModel: '',
       headerTitle: '',
       mainCarImageUrl: '',
-      order: 0
+      order: 0,
+      layoutType: 'standard'
     };
   }
+  const id = row.id || row.data?.id || `cat-${Date.now()}`;
   return {
-    id: row.id || row.data?.id || `cat-${Date.now()}`,
+    id,
     name: row.name || row.data?.name || 'بدون اسم',
     carModel: row.car_model || row.carModel || row.data?.carModel || row.name || '',
     headerTitle: row.header_title || row.headerTitle || row.data?.headerTitle || row.name || '',
     mainCarImageUrl: row.main_car_image_url || row.mainCarImageUrl || row.data?.mainCarImageUrl || '',
     description: row.description || row.data?.description || '',
-    order: row.order ?? row.data?.order ?? 0
+    order: row.order ?? row.data?.order ?? 0,
+    layoutType: row.layout_type || row.layoutType || row.data?.layoutType || (id === 'cat-protection-tint' ? 'protection_tint' : 'standard')
   };
 };
 

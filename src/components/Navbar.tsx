@@ -370,7 +370,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-none">
             {categories.map((cat) => {
               const isSelected = activeCategoryId === cat.id;
-              const isProtection = cat.id === 'cat-protection-tint' || cat.name.includes('الحماية');
+              const isProtection = cat.layoutType === 'protection_tint' || cat.id === 'cat-protection-tint' || cat.name.includes('الحماية');
               return (
                 <button
                   key={cat.id}

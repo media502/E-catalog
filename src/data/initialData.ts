@@ -62,6 +62,7 @@ export const INITIAL_CATEGORIES: CarCategory[] = [
     mainCarImageUrl: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&auto=format&fit=crop&q=80',
     description: 'الباقات الفاخرة المعتمدة لحماية السيارات، صبغ الرينجات والصدامات، حماية PPF، العازل الحراري النانو سيراميك، والبوليش العالي الجودة من وولف كار',
     order: 6,
+    layoutType: 'protection_tint',
   },
 ];
 

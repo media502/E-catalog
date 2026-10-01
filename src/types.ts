@@ -29,6 +29,7 @@ export interface CarCategory {
   mainCarImageUrl: string;
   description?: string;
   order: number;
+  layoutType?: 'standard' | 'protection_tint';
 }
 
 export type ViewMode = 'catalog' | 'employee_entry' | 'print_view' | 'barcode_scanner';
